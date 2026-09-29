@@ -1,0 +1,411 @@
+import json
+import os
+from datetime import datetime
+
+FILE_NAME = "tasks.json"
+
+
+# -----------------------------
+# Load tasks from JSON file
+# -----------------------------
+def load_tasks():
+    if not os.path.exists(FILE_NAME):
+        return []
+
+    try:
+        with open(FILE_NAME, "r") as file:
+            return json.load(file)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return []
+
+
+# -----------------------------
+# Save tasks to JSON file
+# -----------------------------
+def save_tasks(tasks):
+    with open(FILE_NAME, "w") as file:
+        json.dump(tasks, file, indent=4)
+
+
+# -----------------------------
+# Generate task ID
+# -----------------------------
+def get_next_id(tasks):
+    if not tasks:
+        return 1
+
+    return max(task["id"] for task in tasks) + 1
+
+
+# -----------------------------
+# Add a new task
+# -----------------------------
+def add_task(tasks):
+    print("\n--- Add New Task ---")
+
+    title = input("Task title: ").strip()
+
+    if not title:
+        print("Task title cannot be empty.")
+        return
+
+    description = input("Description: ").strip()
+
+    print("\nPriority:")
+    print("1. Low")
+    print("2. Medium")
+    print("3. High")
+
+    priority_choice = input("Choose priority: ")
+
+    priority = {
+        "1": "Low",
+        "2": "Medium",
+        "3": "High"
+    }.get(priority_choice, "Medium")
+
+    due_date = input("Due date (YYYY-MM-DD, optional): ").strip()
+
+    if due_date:
+        try:
+            datetime.strptime(due_date, "%Y-%m-%d")
+        except ValueError:
+            print("Invalid date format.")
+            return
+
+    task = {
+        "id": get_next_id(tasks),
+        "title": title,
+        "description": description,
+        "priority": priority,
+        "due_date": due_date,
+        "status": "Pending",
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    }
+
+    tasks.append(task)
+    save_tasks(tasks)
+
+    print("Task added successfully!")
+
+
+# -----------------------------
+# Display one task
+# -----------------------------
+def display_task(task):
+    print("-" * 50)
+    print(f"ID          : {task['id']}")
+    print(f"Title       : {task['title']}")
+    print(f"Description : {task['description']}")
+    print(f"Priority    : {task['priority']}")
+    print(f"Due Date    : {task['due_date'] or 'No deadline'}")
+    print(f"Status      : {task['status']}")
+    print(f"Created At  : {task['created_at']}")
+
+
+# -----------------------------
+# View all tasks
+# -----------------------------
+def view_tasks(tasks):
+    print("\n--- All Tasks ---")
+
+    if not tasks:
+        print("No tasks available.")
+        return
+
+    for task in tasks:
+        display_task(task)
+
+    print("-" * 50)
+
+
+# -----------------------------
+# Find task by ID
+# -----------------------------
+def find_task(tasks, task_id):
+    for task in tasks:
+        if task["id"] == task_id:
+            return task
+
+    return None
+
+
+# -----------------------------
+# Update a task
+# -----------------------------
+def update_task(tasks):
+    print("\n--- Update Task ---")
+
+    try:
+        task_id = int(input("Enter task ID: "))
+    except ValueError:
+        print("Invalid ID.")
+        return
+
+    task = find_task(tasks, task_id)
+
+    if not task:
+        print("Task not found.")
+        return
+
+    print("\nPress Enter to keep the existing value.")
+
+    title = input(f"Title [{task['title']}]: ").strip()
+    description = input(
+        f"Description [{task['description']}]: "
+    ).strip()
+
+    print("\nPriority:")
+    print("1. Low")
+    print("2. Medium")
+    print("3. High")
+
+    priority_choice = input(
+        f"Priority [{task['priority']}]: "
+    ).strip()
+
+    due_date = input(
+        f"Due date [{task['due_date'] or 'None'}]: "
+    ).strip()
+
+    if title:
+        task["title"] = title
+
+    if description:
+        task["description"] = description
+
+    if priority_choice:
+        task["priority"] = {
+            "1": "Low",
+            "2": "Medium",
+            "3": "High"
+        }.get(priority_choice, task["priority"])
+
+    if due_date:
+        try:
+            datetime.strptime(due_date, "%Y-%m-%d")
+            task["due_date"] = due_date
+        except ValueError:
+            print("Invalid date. Existing date retained.")
+
+    save_tasks(tasks)
+
+    print("Task updated successfully!")
+
+
+# -----------------------------
+# Complete a task
+# -----------------------------
+def complete_task(tasks):
+    print("\n--- Complete Task ---")
+
+    try:
+        task_id = int(input("Enter task ID: "))
+    except ValueError:
+        print("Invalid ID.")
+        return
+
+    task = find_task(tasks, task_id)
+
+    if not task:
+        print("Task not found.")
+        return
+
+    task["status"] = "Completed"
+    save_tasks(tasks)
+
+    print("Task marked as completed!")
+
+
+# -----------------------------
+# Delete a task
+# -----------------------------
+def delete_task(tasks):
+    print("\n--- Delete Task ---")
+
+    try:
+        task_id = int(input("Enter task ID: "))
+    except ValueError:
+        print("Invalid ID.")
+        return
+
+    task = find_task(tasks, task_id)
+
+    if not task:
+        print("Task not found.")
+        return
+
+    confirmation = input(
+        f"Delete '{task['title']}'? (y/n): "
+    ).lower()
+
+    if confirmation == "y":
+        tasks.remove(task)
+        save_tasks(tasks)
+        print("Task deleted successfully.")
+    else:
+        print("Delete cancelled.")
+
+
+# -----------------------------
+# Search tasks
+# -----------------------------
+def search_tasks(tasks):
+    print("\n--- Search Tasks ---")
+
+    keyword = input("Enter keyword: ").strip().lower()
+
+    results = [
+        task for task in tasks
+        if keyword in task["title"].lower()
+        or keyword in task["description"].lower()
+    ]
+
+    if not results:
+        print("No matching tasks found.")
+        return
+
+    print(f"\nFound {len(results)} task(s):")
+
+    for task in results:
+        display_task(task)
+
+
+# -----------------------------
+# Filter tasks
+# -----------------------------
+def filter_tasks(tasks):
+    print("\n--- Filter Tasks ---")
+    print("1. Pending")
+    print("2. Completed")
+    print("3. High Priority")
+    print("4. Medium Priority")
+    print("5. Low Priority")
+
+    choice = input("Choose filter: ")
+
+    filters = {
+        "1": lambda t: t["status"] == "Pending",
+        "2": lambda t: t["status"] == "Completed",
+        "3": lambda t: t["priority"] == "High",
+        "4": lambda t: t["priority"] == "Medium",
+        "5": lambda t: t["priority"] == "Low"
+    }
+
+    if choice not in filters:
+        print("Invalid choice.")
+        return
+
+    results = [
+        task for task in tasks
+        if filters[choice](task)
+    ]
+
+    if not results:
+        print("No tasks found.")
+        return
+
+    for task in results:
+        display_task(task)
+
+
+# -----------------------------
+# Dashboard
+# -----------------------------
+def dashboard(tasks):
+    print("\n" + "=" * 50)
+    print("              TASK DASHBOARD")
+    print("=" * 50)
+
+    total = len(tasks)
+
+    completed = sum(
+        1 for task in tasks
+        if task["status"] == "Completed"
+    )
+
+    pending = sum(
+        1 for task in tasks
+        if task["status"] == "Pending"
+    )
+
+    high_priority = sum(
+        1 for task in tasks
+        if task["priority"] == "High"
+    )
+
+    print(f"Total Tasks       : {total}")
+    print(f"Pending Tasks     : {pending}")
+    print(f"Completed Tasks   : {completed}")
+    print(f"High Priority     : {high_priority}")
+
+    if total > 0:
+        percentage = (completed / total) * 100
+        print(f"Completion Rate   : {percentage:.1f}%")
+    else:
+        print("Completion Rate   : 0%")
+
+    print("=" * 50)
+
+
+# -----------------------------
+# Main menu
+# -----------------------------
+def main():
+    tasks = load_tasks()
+
+    while True:
+        print("\n")
+        print("=" * 50)
+        print("          PERSONAL TASK MANAGER")
+        print("=" * 50)
+
+        print("1. Add Task")
+        print("2. View All Tasks")
+        print("3. Update Task")
+        print("4. Complete Task")
+        print("5. Delete Task")
+        print("6. Search Tasks")
+        print("7. Filter Tasks")
+        print("8. Dashboard")
+        print("9. Exit")
+
+        choice = input("\nEnter your choice: ").strip()
+
+        if choice == "1":
+            add_task(tasks)
+
+        elif choice == "2":
+            view_tasks(tasks)
+
+        elif choice == "3":
+            update_task(tasks)
+
+        elif choice == "4":
+            complete_task(tasks)
+
+        elif choice == "5":
+            delete_task(tasks)
+
+        elif choice == "6":
+            search_tasks(tasks)
+
+        elif choice == "7":
+            filter_tasks(tasks)
+
+        elif choice == "8":
+            dashboard(tasks)
+
+        elif choice == "9":
+            print("Thank you for using Personal Task Manager!")
+            break
+
+        else:
+            print("Invalid choice. Please try again.")
+
+
+# -----------------------------
+# Program entry point
+# -----------------------------
+if __name__ == "__main__":
+    main() 
